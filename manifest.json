@@ -3,7 +3,7 @@
   "name": "Hulu Ratings",
   "short_name": "Hulu Ratings",
   "homepage_url": "http://hulu.com/",
-  "version": "0.0.9",
+  "version": "1.0.0",
   "icons": {
     "16": "images/icon.png",
     "19": "images/icon.png",
