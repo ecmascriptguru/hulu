@@ -89,42 +89,28 @@ window.ContentScript = (function(window, $) {
 
                     switch(rate['Source']) {
                         case "Internet Movie Database":
-                            score = JSON.parse(rate['Value'].substr(0, rate['Value'].indexOf('/10')))/2
-                            let $imdbRating = $("<span/>").addClass("details-action").attr({
+                            score = JSON.parse(rate['Value'].substr(0, rate['Value'].indexOf('/10')))
+                            let $imdbRating = $("<span/>").addClass("details-action main-ratings-container").attr({
                                     title: `Internet Movie Database Rating: ${score}`
                                 })
 
-                            for (let j = 0; j < 5; j++) {
-                                let diff = score - j - 1,
-                                    starFlag = 'empty'
-
-                                if (diff > -0.2) {
-                                    starFlag = 'full'
-                                } else if (diff > -0.6) {
-                                    starFlag = 'half'
-                                }
-                                $imdbRating.append($(`<span class="rating-star large ${starFlag}"></span>`))
-                            }
+                            $imdbRating.append(
+                                $(`<img src=${chrome.extension.getURL('images/imdb.png')} class="hulu-extension-imdb-rating" />`),
+                                $(`<span class="imdb-rating">${score}</span>`)
+                            )
                             $imdbRating.insertAfter($mainRatingEl)
                             break;
                         
                         case "Rotten Tomatoes":
-                            score = JSON.parse(rate['Value'].substr(0, rate['Value'].indexOf('%'))) / 20
-                            let $rottenTomatoesRating = $("<span/>").addClass("details-action").attr({
+                            score = rate['Value']
+                            let $rottenTomatoesRating = $("<span/>").addClass("details-action main-ratings-container").attr({
                                     title: `RottenTomatoes Rating: ${score}`
                                 })
 
-                            for (let j = 0; j < 5; j++) {
-                                let diff = score - j - 1,
-                                    starFlag = 'empty'
-
-                                if (diff > -0.2) {
-                                    starFlag = 'full'
-                                } else if (diff > -0.6) {
-                                    starFlag = 'half'
-                                }
-                                $rottenTomatoesRating.append($(`<span class="rating-star large ${starFlag}"></span>`))
-                            }
+                            $rottenTomatoesRating.append(
+                                $(`<img src=${chrome.extension.getURL('images/tomato.png')} class="hulu-extension-tomato-rating" />`),
+                                $(`<span class="tomato-rating">${score}</span>`)
+                            )
 
                             $rottenTomatoesRating.insertAfter($mainRatingEl)
                             break;
@@ -136,6 +122,8 @@ window.ContentScript = (function(window, $) {
                 
                 console.log("main show data", ratings)
             }
+
+            return true
         }
 
         renderRatings = () => {
@@ -182,43 +170,29 @@ window.ContentScript = (function(window, $) {
 
                 switch(rate['Source']) {
                     case "Internet Movie Database":
-                        score = JSON.parse(rate['Value'].substr(0, rate['Value'].indexOf('/10')))/2
+                        score = JSON.parse(rate['Value'].substr(0, rate['Value'].indexOf('/10')))
                         $imdbRating.children().remove()
                         $imdbRating.attr({
                             title: `Internet Movie Database Rating: ${score}`
                         })
 
-                        for (let j = 0; j < 5; j++) {
-                            let diff = score - j - 1,
-                                starFlag = 'empty'
-
-                            if (diff > -0.2) {
-                                starFlag = 'full'
-                            } else if (diff > -0.6) {
-                                starFlag = 'half'
-                            }
-                            $imdbRating.append($(`<span class="rating-star small ${starFlag}"></span>`))
-                        }
+                        $imdbRating.append(
+                            $(`<img src=${chrome.extension.getURL('images/imdb.png')} class="hulu-extension-imdb-rating" />`),
+                            $(`<span class="imdb-rating">${score}</span>`)
+                        )
                         break;
                     
                     case "Rotten Tomatoes":
-                        score = JSON.parse(rate['Value'].substr(0, rate['Value'].indexOf('%'))) / 20
+                        score = rate['Value'] //JSON.parse(rate['Value'].substr(0, rate['Value'].indexOf('%'))) / 20
                         $rottenTomatoesRating.children().remove()
                         $rottenTomatoesRating.attr({
                             title: `RottenTomatoes Rating: ${score}`
                         })
 
-                        for (let j = 0; j < 5; j++) {
-                            let diff = score - j - 1,
-                                starFlag = 'empty'
-
-                            if (diff > -0.2) {
-                                starFlag = 'full'
-                            } else if (diff > -0.6) {
-                                starFlag = 'half'
-                            }
-                            $rottenTomatoesRating.append($(`<span class="rating-star small ${starFlag}"></span>`))
-                        }
+                        $rottenTomatoesRating.append(
+                            $(`<img src=${chrome.extension.getURL('images/tomato.png')} class="hulu-extension-tomato-rating" />`),
+                            $(`<span class="tomato-rating">${score}</span>`)
+                        )
                         break;
 
                     default:
@@ -226,11 +200,19 @@ window.ContentScript = (function(window, $) {
                 }
             }
             
+        },
+
+        renderVideoRating = () => {
+            return false
         }
     
     startHoverMonitoring()
 
-    window.setTimeout(renderMainRating, 1000)
+    let mainInfoTimer = window.setInterval(() => {
+        if (renderMainRating() || renderVideoRating()) {
+            window.clearInterval(mainInfoTimer)
+        }
+    }, 1000)
 
     chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         if (request.action == "rating_callback") {

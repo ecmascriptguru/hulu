@@ -1,0 +1,19 @@
+#hulu_imdb_rating {
+    clear: both;}
+    #hulu_imdb_rating img.hulu-extension-imdb-rating {
+        height: 15px;
+        float: left;
+        margin-top: 2px;
+        margin-right: 7px;}
+
+#hulu_rotten_tomato_rating {
+    clear: both;}
+    #hulu_rotten_tomato_rating img.hulu-extension-tomato-rating {
+        height: 15px;
+        float: left;
+        margin-top: 2px;
+        margin-right: 7px;}
+.main-ratings-container img {
+    height: 20px;
+    float: left;
+    margin-right: 2px;}

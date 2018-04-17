@@ -30,6 +30,9 @@
       "js": [
         "js/jquery.min.js",
         "js/content.js"
+      ],
+      "css": [
+        "css/content.css"
       ]
     }
   ],
@@ -41,6 +44,7 @@
   ],
   "web_accessible_resources": [
       "images/*",
-      "html/*"
+      "html/*",
+      "css/content.css"
   ]
 }
