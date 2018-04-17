@@ -23,7 +23,7 @@ window.ContentScript = (function(window, $) {
                     //     console.log('The ' + mutation.attributeName + ' attribute was modified.');
                     // }
                 }
-                
+
                 if (!renderFlag) {
                     return false
                 }
@@ -62,6 +62,81 @@ window.ContentScript = (function(window, $) {
             // Later, you can stop observing
             observer.disconnect();
         },
+
+        renderMainRating = () => {
+            let $mainShowContainer = $("#show-description")
+
+            if ($mainShowContainer.length == 0) {
+                return false
+            }
+            
+            title = $mainShowContainer.find("div.desc-right h1.cu-show-name").text()
+            if (!data[title]) {
+                chrome.runtime.sendMessage({
+                    action: "omdb_get",
+                    main: true,
+                    title: title
+                }, function(response) {
+                    console.log(response.farewell);
+                });
+            } else {
+                let ratings = data[title]['Ratings'],
+                    $mainRatingEl = $("#show-description div.show-details #show-rating")
+
+                for (let i = 0; i < ratings.length; i++) {
+                    let rate = ratings[i],
+                        score = 0
+
+                    switch(rate['Source']) {
+                        case "Internet Movie Database":
+                            score = JSON.parse(rate['Value'].substr(0, rate['Value'].indexOf('/10')))/2
+                            let $imdbRating = $("<span/>").addClass("details-action").attr({
+                                    title: `Internet Movie Database Rating: ${score}`
+                                })
+
+                            for (let j = 0; j < 5; j++) {
+                                let diff = score - j - 1,
+                                    starFlag = 'empty'
+
+                                if (diff > -0.2) {
+                                    starFlag = 'full'
+                                } else if (diff > -0.6) {
+                                    starFlag = 'half'
+                                }
+                                $imdbRating.append($(`<span class="rating-star large ${starFlag}"></span>`))
+                            }
+                            $imdbRating.insertAfter($mainRatingEl)
+                            break;
+                        
+                        case "Rotten Tomatoes":
+                            score = JSON.parse(rate['Value'].substr(0, rate['Value'].indexOf('%'))) / 20
+                            let $rottenTomatoesRating = $("<span/>").addClass("details-action").attr({
+                                    title: `RottenTomatoes Rating: ${score}`
+                                })
+
+                            for (let j = 0; j < 5; j++) {
+                                let diff = score - j - 1,
+                                    starFlag = 'empty'
+
+                                if (diff > -0.2) {
+                                    starFlag = 'full'
+                                } else if (diff > -0.6) {
+                                    starFlag = 'half'
+                                }
+                                $rottenTomatoesRating.append($(`<span class="rating-star large ${starFlag}"></span>`))
+                            }
+
+                            $rottenTomatoesRating.insertAfter($mainRatingEl)
+                            break;
+    
+                        default:
+                            continue;
+                    }
+                }
+                
+                console.log("main show data", ratings)
+            }
+        }
 
         renderRatings = () => {
             if (!$("#hover-box").is(":visible")) {
@@ -127,13 +202,21 @@ window.ContentScript = (function(window, $) {
     
     startHoverMonitoring()
 
+    window.setTimeout(renderMainRating, 1000)
+
     chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         if (request.action == "rating_callback") {
             sendResponse({farewell: "goodbye"});
+
             data[request.title] = request.res
-            stopHoverMonitoring()
-            renderRatings()
-            startHoverMonitoring()
+
+            if (request.main) {
+                renderMainRating()
+            } else {
+                stopHoverMonitoring()
+                renderRatings()
+                startHoverMonitoring()
+            }
         }
     });
 }(window, jQuery));
