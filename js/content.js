@@ -1,7 +1,8 @@
 window.ContentScript = (function(window, $) {
     let observer = null,
         data = {},
-        current = null
+        current = null,
+        cur_url = null
 
     let filterTitle = (title) => {
         if (title.indexOf("(") && title.indexOf(")") > -1) {
@@ -25,11 +26,7 @@ window.ContentScript = (function(window, $) {
                     if (mutation.type == 'childList') {
                         renderFlag = true
                         break
-                        console.log('A child node has been added or removed.');
                     }
-                    // else if (mutation.type == 'attributes') {
-                    //     console.log('The ' + mutation.attributeName + ' attribute was modified.');
-                    // }
                 }
 
                 if (!renderFlag) {
@@ -47,7 +44,7 @@ window.ContentScript = (function(window, $) {
                         action: "omdb_get",
                         title: title
                     }, function(response) {
-                        console.log(response.farewell);
+                        // console.log(response.farewell);
                     });
                     // stopHoverMonitoring()
                 } else {
@@ -72,9 +69,10 @@ window.ContentScript = (function(window, $) {
         },
 
         renderMainRating = () => {
-            let $mainShowContainer = $("#show-description")
+            let $mainShowContainer = $("#show-description"),
+                $elToCheck = $("span.main-ratings-container")
 
-            if ($mainShowContainer.length == 0) {
+            if ($mainShowContainer.length == 0 || $elToCheck.length > 0) {
                 return false
             }
             
@@ -90,7 +88,7 @@ window.ContentScript = (function(window, $) {
                     main: true,
                     title: title
                 }, function(response) {
-                    console.log(response.farewell);
+                    // console.log(response.farewell);
                 });
             } else {
                 let ratings = data[title]['Ratings'],
@@ -132,8 +130,6 @@ window.ContentScript = (function(window, $) {
                             continue;
                     }
                 }
-                
-                console.log("main show data", ratings)
             }
 
             return true
@@ -152,8 +148,6 @@ window.ContentScript = (function(window, $) {
             if (item['status'] == 'pending') {
                 return false
             }
-
-            console.log(item)
 
             current = item
             
@@ -218,11 +212,11 @@ window.ContentScript = (function(window, $) {
         renderVideoRating = () => {
             let $mainShowContainer = $("#video-description")
 
-            if ($mainShowContainer.length == 0) {
+            if ($mainShowContainer.length == 0 || $("span.main-ratings-container").length > 0) {
                 return false
             }
 
-            title = filterTitle($mainShowContainer.find("div.video-description-container h1.video-titles span.show-title, div.video-description-container h1.video-titles span.episode-title").text())
+            title = filterTitle($mainShowContainer.find("div.video-description-container h1.video-titles span.show-title, div.video-description-container h1.video-titles span.episode-title").eq(0).text())
 
             if (title.trim() == "") {
                 return false
@@ -234,7 +228,7 @@ window.ContentScript = (function(window, $) {
                     main: true,
                     title: title
                 }, function(response) {
-                    console.log(response.farewell);
+                    // console.log(response.farewell);
                 });
             } else {
                 let ratings = data[title]['Ratings'],
@@ -276,8 +270,6 @@ window.ContentScript = (function(window, $) {
                             continue;
                     }
                 }
-                
-                console.log("main show data", ratings)
             }
 
             return true
@@ -285,11 +277,17 @@ window.ContentScript = (function(window, $) {
     
     startHoverMonitoring()
 
-    let mainInfoTimer = window.setInterval(() => {
-        if (renderMainRating() || renderVideoRating()) {
-            window.clearInterval(mainInfoTimer)
+    let urlMonitoringTimer = window.setInterval(() => {
+        if (window.location.href != cur_url) {
+            cur_url = window.location.href
+            let mainInfoTimer = window.setInterval(() => {
+                if (renderMainRating() || renderVideoRating()) {
+                    window.clearInterval(mainInfoTimer)
+                }
+            }, 1000)
         }
-    }, 1000)
+    }, 500)
+    
 
     chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         if (request.action == "rating_callback") {

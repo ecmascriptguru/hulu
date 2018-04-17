@@ -9,7 +9,7 @@ let HuluBackground = ((top, $) => {
             type: 'get',
             success: (res) => {
                 chrome.tabs.sendMessage(tabId, {action: "rating_callback", main: mainFlag, title: title, res: res}, (response) => {
-                    console.log(response)
+                    // console.log(response)
                 }); 
             }
         })
