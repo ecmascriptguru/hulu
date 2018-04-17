@@ -177,20 +177,48 @@ window.ContentScript = (function(window, $) {
             }
 
             for (let i = 0; i < item['Ratings'].length; i++) {
-                let rate = item['Ratings'][i]
+                let rate = item['Ratings'][i],
+                    score = 0
+
                 switch(rate['Source']) {
                     case "Internet Movie Database":
+                        score = JSON.parse(rate['Value'].substr(0, rate['Value'].indexOf('/10')))/2
                         $imdbRating.children().remove()
-                        $imdbRating.append(
-                            $(`<div>IMDB Rating: ${rate['Value']}</div>`)
-                        )
+                        $imdbRating.attr({
+                            title: `Internet Movie Database Rating: ${score}`
+                        })
+
+                        for (let j = 0; j < 5; j++) {
+                            let diff = score - j - 1,
+                                starFlag = 'empty'
+
+                            if (diff > -0.2) {
+                                starFlag = 'full'
+                            } else if (diff > -0.6) {
+                                starFlag = 'half'
+                            }
+                            $imdbRating.append($(`<span class="rating-star small ${starFlag}"></span>`))
+                        }
                         break;
                     
                     case "Rotten Tomatoes":
+                        score = JSON.parse(rate['Value'].substr(0, rate['Value'].indexOf('%'))) / 20
                         $rottenTomatoesRating.children().remove()
-                        $rottenTomatoesRating.append(
-                            $(`<div>Rotten Tomatoes Rating: ${rate['Value']}</div>`)
-                        )
+                        $rottenTomatoesRating.attr({
+                            title: `RottenTomatoes Rating: ${score}`
+                        })
+
+                        for (let j = 0; j < 5; j++) {
+                            let diff = score - j - 1,
+                                starFlag = 'empty'
+
+                            if (diff > -0.2) {
+                                starFlag = 'full'
+                            } else if (diff > -0.6) {
+                                starFlag = 'half'
+                            }
+                            $rottenTomatoesRating.append($(`<span class="rating-star small ${starFlag}"></span>`))
+                        }
                         break;
 
                     default:
