@@ -1,219 +1,139 @@
-let loadRepins = (function() {
+window.ContentScript = (function(window, $) {
+    let observer = null,
+        data = {},
+        current = null
 
-    let pages = 5;
-    let count = 0;
-    let mylist = [];
-    let timeout;
+    let startHoverMonitoring = () => {
+            // Select the node that will be observed for mutations
+            let hoverPopup = document.getElementById('hover-box');
 
-    function load() {
-        $(`[data-grid-item="true"]`).each(function() {
-            mylist.push($(this)[0])
-        });
+            // Options for the observer (which mutations to observe)
+            let config = { attributes: true, childList: true };
 
-        if (pages > 0) {
-
-            $(window).scrollTop($(document).height());
-
-            timeout = window.setTimeout(load, 4000);
-
-            count++;
-            if (count == pages) {
-                finish();
-            }
-
-        } else {
-            finish();
-        }
-    }
-
-    function getColsCount() {
-        let width = $(".Pin").parents(".gridCentered").eq(0).innerWidth(),
-            postWidth = 236,
-            horGap = 24;
-
-        return (width + horGap) / (postWidth + horGap);
-    }
-
-    function finish() {
-        let colsCount = getColsCount(),
-            positions = [];
-
-        for (let i = 0; i < colsCount; i ++) {
-            positions.push({
-                left: 0,
-                top: 0
-            })
-        }
-
-        for (let i = 1; i < positions.length; i ++) {
-            positions[i].left = (236 + 24) * i;
-        }
-
-        window.clearTimeout(timeout);
-
-        let list = mylist.filter(function(f) {
-            if ($(f).find('.repinCountSmall').length > 0) {
-                return f;
-            }
-        });
-
-        list.sort(function(a, b) {
-            let compAText = $(a).find('.repinCountSmall').text().trim().split(" ")[0],
-                compBText = $(b).find('.repinCountSmall').text().trim().split(" ")[0];
-            let compA = turnK(compAText);
-            let compB = turnK(compBText);
-            return (compA == compB) ? 0 : (compA > compB) ? -1 : 1;
-        });
-
-        if ($(".Grid").length) {
-            $(".Grid").before('<div id="organized" style="margin:0 12px;"></div>');
-        } else if ($("._4e.relative").length > 0) {
-            $("._4e.relative").before('<div id="organized" style="margin:0 12px;"></div>');
-        } else if ($(".gridCentered").length > 0) {
-            $(".gridCentered").eq($(".gridCentered").length - 1).before('<div id="organized" style="margin:0 12px;position:relative;"></div>');
-            $(".gridCentered").eq($(".gridCentered").length - 1).hide()
-        } else {            
-            // $("._tr._2a").before('<div id="organized" style="margin:0 12px;"></div>');
-            $("._u8._2f").before('<div id="organized" style="margin:0 12px;position:relative"></div>');
-            $("._u8._2f").hide();
-            // $("._u8._2f").attr({id: "organized"}).children().remove();
-        }
-
-        let setPosition = (itm) => {
-            let minTop = Number.POSITIVE_INFINITY,
-                minIndex = 0;
-            
-            for (let i = 0; i < positions.length; i ++) {
-                if (positions[i].top < minTop) {
-                    minTop = positions[i].top;
-                    minIndex = i;
-                }
-            }
-            $(itm).css({
-                top: 0,
-                left: 0,
-                transform: `translateX(${positions[minIndex].left}px) translateY(${positions[minIndex].top}px)`,
-                width: "236px",
-                position: "absolute"
-            });
-            positions[minIndex].top += ($(itm).height() + 24);
-        }
-
-
-        $.each(list, function(idx, itm) {
-            $("#organized").append($(itm));
-            setPosition(itm);
-        });
-
-        if ($(".Grid").length) {
-            $(".Grid").remove();
-        } else {
-            if ($("._4e.relative").length > 0) {
-                $("._4e.relative").remove();
-                $("#organized").addClass("_4e relative");
-            } else if ($("._tr._2a").length > 0) {
-                $("._tr._2a").remove();
-                $("#organized").addClass("_tr _2a");
-            }
-            // $(".gridCentered").remove();
-        }
-
-        let containerHeight = 0;
-        positions.forEach((pos) => {
-            if (containerHeight < pos.top) {
-                containerHeight = pos.top;
-            }
-        });
-        $("#organized").height(containerHeight);
-        reorderIsDone();
-        $(document).off("contextmenu", "div.dimOverlay")
-        downloadImg.init();
-    }
-
-    function turnK(text) {
-        let number = Number(text.replace(/k/g, ''));
-        if (text.indexOf("k") !== -1) {
-            number = number * 1000;
-        }
-        return number;
-    }
-
-    function resetValues(pageCount, initialCount, list) {
-        pages = pageCount;
-        count = initialCount;
-        mylist = list;
-        clearTimeout(timeout);
-    }
-
-    function reorderIsDone() {
-        $('#loading-page-merchpins').remove();
-        $("html, body").scrollTop(0);
-        chrome.runtime.sendMessage({main_action: 'reorder_done'});
-    }
-
-    return function(page) {
-        resetValues(page, 0, []);
-        $('body').append('<div id="loading-page-merchpins" style="opacity: 0.4; background: black; position: fixed; top: 0px; left: 0px; right: 0px; bottom: 0px; text-align: center;"><img style="position: fixed; top: 45%; margin-left:-40px;" width="80px" src="'+chrome.extension.getURL('images/loader.svg')+'" /></div>');
-        load();
-    }
-
-}());
-
-let downloadImg = (function() {
-    let img = null;
-    
-
-    const getImgUrl = () => {
-        return img;
-    }
-
-    const initContextMenu = () => {
-        $(document).ready(() => {
-            $(document).on("contextmenu", "div.dimOverlay", (event) => {
-                let imgTag = $(event.target).parents("[data-grid-item='true']");
-
-                if (!imgTag || imgTag.length == 0) {
-                    img = null;
-                } else {
-                    imgTag = imgTag.find(".fadeContainer img").eq(0)
-                    
-                    if (imgTag && imgTag.length) {
-                        img = imgTag[0].src;
+            // Callback function to execute when mutations are observed
+            let callback = function(mutationsList) {
+                let renderFlag = false
+                for(let mutation of mutationsList) {
+                    if (mutation.type == 'childList') {
+                        renderFlag = true
+                        break
+                        console.log('A child node has been added or removed.');
                     }
+                    // else if (mutation.type == 'attributes') {
+                    //     console.log('The ' + mutation.attributeName + ' attribute was modified.');
+                    // }
                 }
-            })
-        })
-    }
+                
+                if (!renderFlag) {
+                    return false
+                }
 
-    initContextMenu();
+                let title = $(`#hover-box div.title div.show-name`).text()
+                if (title.trim() == '') {
+                    return false
+                }
 
-    return {
-        img: getImgUrl,
-        init: initContextMenu,
-    }
-}())
+                if (data[title] == undefined) {
+                    data[title] = {status: "pending"}
+                    chrome.runtime.sendMessage({
+                        action: "omdb_get",
+                        title: title
+                    }, function(response) {
+                        console.log(response.farewell);
+                    });
+                    // stopHoverMonitoring()
+                } else {
+                    // if (!current || current != data[title]) {
+                        stopHoverMonitoring()
+                        renderRatings()
+                        startHoverMonitoring()
+                    // }
+                }
+            };
 
-chrome.extension.onMessage.addListener(function(msg, sender, sendResponse) {
-    if (msg.main_action == 'reorder') {
-        loadRepins(msg.number_pages);
-    }
+            // Create an observer instance linked to the callback function
+            observer = new MutationObserver(callback);
 
-    if (msg.main_action == "img_url") {
-        sendResponse({img: downloadImg.img()});
-    }
+            // Start observing the target node for configured mutations
+            observer.observe(hoverPopup, config);
+        },
 
-    if (msg.main_action == 'show_window') {
-        if ($('.merchipins-window').length > 0) {
-            $('.merchipins-window').remove();
-        } else {
-            $('body').append('<img class="merchipins-window" style="cursor: pointer;  z-index: 999999; border: none; position: fixed; top: 11px; right: 21px; " src="'+chrome.extension.getURL('images/close.png')+'" />');
-            $('body').append('<iframe class="merchipins-window" id="merchipins-window" style="background: #999; box-shadow: 1px 1px 5px #888888; border: 1px solid #CCC; z-index: 99999; border: none; position: fixed; top: 20px; right: 30px; width:350px; height: 270px;" src="'+chrome.extension.getURL('html/browser_action.html')+'" />')
+        stopHoverMonitoring = () => {
+            // Later, you can stop observing
+            observer.disconnect();
+        },
 
-            $('img.merchipins-window').click(function(){
-                $('.merchipins-window').remove();
-            });
+        renderRatings = () => {
+            if (!$("#hover-box").is(":visible")) {
+                return false;
+            }
+            let title = $(`#hover-box div.title div.show-name`).text(),
+                $ratingsContainer = $(`#hover-box div.rating-stars`),
+                $rottenTomatoesRating = $ratingsContainer.find("#hulu_rotten_tomato_rating"),
+                $imdbRating = $ratingsContainer.find("#hulu_imdb_rating"),
+                item = data[title]
+
+            if (item['status'] == 'pending') {
+                return false
+            }
+
+            console.log(item)
+
+            current = item
+            
+            if ($rottenTomatoesRating.length == 0) {
+                $rottenTomatoesRating = $('<div/>').attr({
+                    id: 'hulu_rotten_tomato_rating',
+                    title: 'Rotten Tomatoes Ratting'
+                })
+                $ratingsContainer.append($rottenTomatoesRating)
+            }
+
+            if ($imdbRating.length == 0) {
+                $imdbRating = $('<div/>').attr({
+                    id: 'hulu_imdb_rating',
+                    title: 'IMDB Ratting'
+                })
+                $ratingsContainer.append($imdbRating)
+            }
+
+            if (!item['Ratings']) {
+                return false
+            }
+
+            for (let i = 0; i < item['Ratings'].length; i++) {
+                let rate = item['Ratings'][i]
+                switch(rate['Source']) {
+                    case "Internet Movie Database":
+                        $imdbRating.children().remove()
+                        $imdbRating.append(
+                            $(`<div>IMDB Rating: ${rate['Value']}</div>`)
+                        )
+                        break;
+                    
+                    case "Rotten Tomatoes":
+                        $rottenTomatoesRating.children().remove()
+                        $rottenTomatoesRating.append(
+                            $(`<div>Rotten Tomatoes Rating: ${rate['Value']}</div>`)
+                        )
+                        break;
+
+                    default:
+                        continue;
+                }
+            }
+            
         }
-    }
-});
-
     
+    startHoverMonitoring()
+
+    chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+        if (request.action == "rating_callback") {
+            sendResponse({farewell: "goodbye"});
+            data[request.title] = request.res
+            stopHoverMonitoring()
+            renderRatings()
+            startHoverMonitoring()
+        }
+    });
+}(window, jQuery));

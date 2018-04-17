@@ -36,7 +36,8 @@
   "permissions": [
     "activeTab",
     "contextMenus",
-    "tabs"
+    "tabs",
+    "http://www.omdbapi.com/*"
   ],
   "web_accessible_resources": [
       "images/*",
