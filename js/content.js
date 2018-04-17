@@ -284,9 +284,9 @@ window.ContentScript = (function(window, $) {
                 if (renderMainRating() || renderVideoRating()) {
                     window.clearInterval(mainInfoTimer)
                 }
-            }, 1000)
+            }, 200)
         }
-    }, 500)
+    }, 100)
     
 
     chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
