@@ -3,6 +3,14 @@ window.ContentScript = (function(window, $) {
         data = {},
         current = null
 
+    let filterTitle = (title) => {
+        if (title.indexOf("(") && title.indexOf(")") > -1) {
+            return title.substr(0, title.indexOf("(")).trim()
+        } else {
+            return title.trim()
+        }
+    }
+
     let startHoverMonitoring = () => {
             // Select the node that will be observed for mutations
             let hoverPopup = document.getElementById('hover-box');
@@ -28,7 +36,7 @@ window.ContentScript = (function(window, $) {
                     return false
                 }
 
-                let title = $(`#hover-box div.title div.show-name`).text()
+                let title = filterTitle($(`#hover-box div.title div.show-name`).text())
                 if (title.trim() == '') {
                     return false
                 }
@@ -70,7 +78,12 @@ window.ContentScript = (function(window, $) {
                 return false
             }
             
-            title = $mainShowContainer.find("div.desc-right h1.cu-show-name").text()
+            title = filterTitle($mainShowContainer.find("div.desc-right h1.cu-show-name").text())
+
+            if (title.trim() == "") {
+                return false
+            }
+
             if (!data[title]) {
                 chrome.runtime.sendMessage({
                     action: "omdb_get",
@@ -130,7 +143,7 @@ window.ContentScript = (function(window, $) {
             if (!$("#hover-box").is(":visible")) {
                 return false;
             }
-            let title = $(`#hover-box div.title div.show-name`).text(),
+            let title = filterTitle($(`#hover-box div.title div.show-name`).text()),
                 $ratingsContainer = $(`#hover-box div.rating-stars`),
                 $rottenTomatoesRating = $ratingsContainer.find("#hulu_rotten_tomato_rating"),
                 $imdbRating = $ratingsContainer.find("#hulu_imdb_rating"),
@@ -203,7 +216,71 @@ window.ContentScript = (function(window, $) {
         },
 
         renderVideoRating = () => {
-            return false
+            let $mainShowContainer = $("#video-description")
+
+            if ($mainShowContainer.length == 0) {
+                return false
+            }
+
+            title = filterTitle($mainShowContainer.find("div.video-description-container h1.video-titles span.show-title, div.video-description-container h1.video-titles span.episode-title").text())
+
+            if (title.trim() == "") {
+                return false
+            }
+
+            if (!data[title]) {
+                chrome.runtime.sendMessage({
+                    action: "omdb_get",
+                    main: true,
+                    title: title
+                }, function(response) {
+                    console.log(response.farewell);
+                });
+            } else {
+                let ratings = data[title]['Ratings'],
+                    $mainRatingEl = $("#video-description span#video-rating")
+
+                for (let i = 0; i < ratings.length; i++) {
+                    let rate = ratings[i],
+                        score = 0
+
+                    switch(rate['Source']) {
+                        case "Internet Movie Database":
+                            score = JSON.parse(rate['Value'].substr(0, rate['Value'].indexOf('/10')))
+                            let $imdbRating = $("<span/>").addClass("details-action main-ratings-container").attr({
+                                    title: `Internet Movie Database Rating: ${score}`
+                                })
+
+                            $imdbRating.append(
+                                $(`<img src=${chrome.extension.getURL('images/imdb.png')} class="hulu-extension-imdb-rating" />`),
+                                $(`<span class="imdb-rating">${score}</span>`)
+                            )
+                            $imdbRating.insertAfter($mainRatingEl)
+                            break;
+                        
+                        case "Rotten Tomatoes":
+                            score = rate['Value']
+                            let $rottenTomatoesRating = $("<span/>").addClass("details-action main-ratings-container").attr({
+                                    title: `RottenTomatoes Rating: ${score}`
+                                })
+
+                            $rottenTomatoesRating.append(
+                                $(`<img src=${chrome.extension.getURL('images/tomato.png')} class="hulu-extension-tomato-rating" />`),
+                                $(`<span class="tomato-rating">${score}</span>`)
+                            )
+
+                            $rottenTomatoesRating.insertAfter($mainRatingEl)
+                            break;
+    
+                        default:
+                            continue;
+                    }
+                }
+                
+                console.log("main show data", ratings)
+            }
+
+            return true
         }
     
     startHoverMonitoring()
@@ -222,6 +299,7 @@ window.ContentScript = (function(window, $) {
 
             if (request.main) {
                 renderMainRating()
+                renderVideoRating()
             } else {
                 stopHoverMonitoring()
                 renderRatings()
