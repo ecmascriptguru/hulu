@@ -1,4 +1,7 @@
 window.ContentScript = (function(window, $) {
+    // Select the node that will be observed for mutations
+    let hoverPopup = document.getElementById('hover-box');
+
     let observer = null,
         data = {},
         current = null,
@@ -13,9 +16,6 @@ window.ContentScript = (function(window, $) {
     }
 
     let startHoverMonitoring = () => {
-            // Select the node that will be observed for mutations
-            let hoverPopup = document.getElementById('hover-box');
-
             // Options for the observer (which mutations to observe)
             let config = { attributes: true, childList: true };
 
@@ -38,21 +38,27 @@ window.ContentScript = (function(window, $) {
                     return false
                 }
 
-                if (data[title] == undefined) {
-                    data[title] = {status: "pending"}
-                    chrome.runtime.sendMessage({
-                        action: "omdb_get",
-                        title: title
-                    }, function(response) {
-                        // console.log(response.farewell);
-                    });
-                    // stopHoverMonitoring()
+                if ($("#hulu_imdb_rating").length == 0) {
+                    $(hoverPopup).hide()
+                    if (data[title] == undefined) {
+                        data[title] = {status: "pending"}
+                        chrome.runtime.sendMessage({
+                            action: "omdb_get",
+                            title: title
+                        }, function(response) {
+                            // console.log(response.farewell);
+                        });
+                        // stopHoverMonitoring()
+                    } else {
+                        // if (!current || current != data[title]) {
+                            stopHoverMonitoring()
+                            renderRatings()
+                            $(hoverPopup).show()
+                            startHoverMonitoring()
+                        // }
+                    }
                 } else {
-                    // if (!current || current != data[title]) {
-                        stopHoverMonitoring()
-                        renderRatings()
-                        startHoverMonitoring()
-                    // }
+                    $(hoverPopup).show()
                 }
             };
 
@@ -135,10 +141,10 @@ window.ContentScript = (function(window, $) {
             return true
         }
 
-        renderRatings = () => {
-            if (!$("#hover-box").is(":visible")) {
-                return false;
-            }
+        renderRatings = (callback) => {
+            // if (!$("#hover-box").is(":visible")) {
+            //     return false;
+            // }
             let title = filterTitle($(`#hover-box div.title div.show-name`).text()),
                 $ratingsContainer = $(`#hover-box div.rating-stars`),
                 $rottenTomatoesRating = $ratingsContainer.find("#hulu_rotten_tomato_rating"),
@@ -148,7 +154,6 @@ window.ContentScript = (function(window, $) {
             if (item['status'] == 'pending') {
                 return false
             }
-
             current = item
             
             if ($rottenTomatoesRating.length == 0) {
@@ -207,6 +212,10 @@ window.ContentScript = (function(window, $) {
                 }
             }
             
+            if (typeof callback === 'function') {
+                callback()
+            }
+            $(hoverPopup).show()
         },
 
         renderVideoRating = () => {
@@ -280,11 +289,13 @@ window.ContentScript = (function(window, $) {
     let urlMonitoringTimer = window.setInterval(() => {
         if (window.location.href != cur_url) {
             cur_url = window.location.href
-            let mainInfoTimer = window.setInterval(() => {
-                if (renderMainRating() || renderVideoRating()) {
-                    window.clearInterval(mainInfoTimer)
-                }
-            }, 200)
+            if (!renderMainRating() && !renderVideoRating()) {
+                let mainInfoTimer = window.setInterval(() => {
+                    if (renderMainRating() || renderVideoRating()) {
+                        window.clearInterval(mainInfoTimer)
+                    }
+                }, 200)
+            }
         }
     }, 100)
     
@@ -301,6 +312,7 @@ window.ContentScript = (function(window, $) {
             } else {
                 stopHoverMonitoring()
                 renderRatings()
+                $(hoverPopup).show()
                 startHoverMonitoring()
             }
         }
