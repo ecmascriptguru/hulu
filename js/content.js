@@ -106,7 +106,7 @@ window.ContentScript = (function(window, $) {
 
                     switch(rate['Source']) {
                         case "Internet Movie Database":
-                            score = JSON.parse(rate['Value'].substr(0, rate['Value'].indexOf('/10')))
+                            score = JSON.parse(rate['Value'].substr(0, rate['Value'].indexOf('/10'))).toFixed(1)
                             let $imdbRating = $("<span/>").addClass("details-action main-ratings-container").attr({
                                     title: `Internet Movie Database Rating: ${score}`
                                 })
@@ -142,9 +142,6 @@ window.ContentScript = (function(window, $) {
         }
 
         renderRatings = (callback) => {
-            // if (!$("#hover-box").is(":visible")) {
-            //     return false;
-            // }
             let title = filterTitle($(`#hover-box div.title div.show-name`).text()),
                 $ratingsContainer = $(`#hover-box div.rating-stars`),
                 $rottenTomatoesRating = $ratingsContainer.find("#hulu_rotten_tomato_rating"),
@@ -182,7 +179,7 @@ window.ContentScript = (function(window, $) {
 
                 switch(rate['Source']) {
                     case "Internet Movie Database":
-                        score = JSON.parse(rate['Value'].substr(0, rate['Value'].indexOf('/10')))
+                        score = JSON.parse(rate['Value'].substr(0, rate['Value'].indexOf('/10'))).toFixed(1)
                         $imdbRating.children().remove()
                         $imdbRating.attr({
                             title: `Internet Movie Database Rating: ${score}`
@@ -249,7 +246,7 @@ window.ContentScript = (function(window, $) {
 
                     switch(rate['Source']) {
                         case "Internet Movie Database":
-                            score = JSON.parse(rate['Value'].substr(0, rate['Value'].indexOf('/10')))
+                            score = JSON.parse(rate['Value'].substr(0, rate['Value'].indexOf('/10'))).toFixed(1)
                             let $imdbRating = $("<span/>").addClass("details-action main-ratings-container").attr({
                                     title: `Internet Movie Database Rating: ${score}`
                                 })
